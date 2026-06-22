@@ -2,8 +2,8 @@
 gatherUsageStats = false
 
 [theme]
-primaryColor = "#3d5a4c"
-backgroundColor = "#f7f5f2"
-secondaryBackgroundColor = "#eeebe5"
-textColor = "#1c1c1c"
+primaryColor = "#d4a054"
+backgroundColor = "#f4f1ec"
+secondaryBackgroundColor = "#ebe6de"
+textColor = "#0f1923"
 font = "sans serif"

@@ -12,204 +12,469 @@ from src.app_support import (
 )
 from src.data import FEATURES, TARGET
 
-st.set_page_config(page_title="Climate Signal", layout="wide")
+st.set_page_config(
+    page_title="Climate Signal",
+    page_icon="◎",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
 CSS = """
 <style>
-    .block-container { padding-top: 1.5rem; max-width: 1050px; }
-    h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; }
-    .subtitle { color: #555; font-size: 0.92rem; line-height: 1.5; margin-bottom: 1.5rem; }
-    .card {
-        background: #fff;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        padding: 1.1rem 1.25rem;
-        margin-bottom: 0.75rem;
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
+    .block-container { padding-top: 0; padding-bottom: 2.5rem; max-width: 1180px; }
+
+    [data-testid="stSidebar"] { display: none; }
+    [data-testid="collapsedControl"] { display: none; }
+
+    .topbar {
+        background: #0f1923;
+        margin: -1rem -1rem 2rem -1rem;
+        padding: 0.85rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 3px solid #d4a054;
     }
-    .card-label {
-        font-size: 0.7rem;
+    .topbar-brand { color: #f0ebe3; font-size: 1.05rem; font-weight: 600; letter-spacing: 0.04em; }
+    .topbar-brand span { color: #d4a054; }
+    .topbar-meta { color: #7a8a96; font-size: 0.75rem; }
+
+    .page-lead {
+        font-size: 0.9rem;
+        color: #4a5568;
+        line-height: 1.55;
+        margin: -0.5rem 0 1.5rem 0;
+        max-width: 52rem;
+    }
+
+    .filter-box {
+        background: #f4f1ec;
+        border: 1px solid #d8d2c8;
+        border-radius: 8px;
+        padding: 1.25rem 1.1rem;
+    }
+    .filter-box h3 {
+        font-size: 0.72rem;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: #888;
+        letter-spacing: 0.1em;
+        color: #6b7280;
+        margin: 0 0 1rem 0;
         font-weight: 600;
     }
-    .card-value { font-size: 1.3rem; font-weight: 600; margin-top: 0.15rem; }
-    .result {
-        border-left: 4px solid #3d5a4c;
-        padding: 1rem 1.2rem;
-        background: #fff;
-        border: 1px solid #ddd;
-        border-left: 4px solid #3d5a4c;
-        border-radius: 4px;
-        margin: 1rem 0;
+
+    .score-panel {
+        background: #0f1923;
+        color: #f0ebe3;
+        border-radius: 10px;
+        padding: 1.75rem 1.5rem;
+        text-align: center;
+        min-height: 220px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
-    .result.elevated { border-left-color: #a0522d; }
-    .footnote { font-size: 0.82rem; color: #666; line-height: 1.5; margin-top: 1.5rem; }
+    .score-panel.elevated { border: 2px solid #d4a054; }
+    .score-panel.normal { border: 2px solid #3d6b5a; }
+    .score-big {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 3rem;
+        font-weight: 500;
+        line-height: 1;
+        color: #d4a054;
+    }
+    .score-panel.normal .score-big { color: #6db89a; }
+    .score-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: #7a8a96;
+        margin-bottom: 0.5rem;
+    }
+    .score-verdict {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-top: 0.75rem;
+        color: #f0ebe3;
+    }
+    .score-sub {
+        font-size: 0.8rem;
+        color: #7a8a96;
+        margin-top: 0.35rem;
+    }
+
+    .stat-pill {
+        display: inline-block;
+        background: #fff;
+        border: 1px solid #d8d2c8;
+        border-radius: 20px;
+        padding: 0.35rem 0.85rem;
+        font-size: 0.8rem;
+        margin-right: 0.4rem;
+        margin-bottom: 0.4rem;
+    }
+    .stat-pill strong {
+        font-family: 'JetBrains Mono', monospace;
+        color: #0f1923;
+    }
+
+    .section-tag {
+        display: inline-block;
+        background: #0f1923;
+        color: #d4a054;
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0.25rem 0.6rem;
+        border-radius: 3px;
+        margin-bottom: 0.75rem;
+    }
+
+    .feature-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.35rem 1rem;
+        font-size: 0.82rem;
+    }
+    .feature-grid .name { color: #6b7280; }
+    .feature-grid .val {
+        font-family: 'JetBrains Mono', monospace;
+        text-align: right;
+        color: #0f1923;
+    }
+
+    .metric-tile {
+        background: #fff;
+        border: 1px solid #d8d2c8;
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+    }
+    .metric-tile .n {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.5rem;
+        font-weight: 500;
+        color: #0f1923;
+    }
+    .metric-tile .l {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #6b7280;
+        margin-top: 0.2rem;
+    }
+
+    .footnote {
+        font-size: 0.8rem;
+        color: #6b7280;
+        line-height: 1.55;
+        border-top: 1px solid #d8d2c8;
+        padding-top: 1rem;
+        margin-top: 2rem;
+    }
+
+    div[data-testid="stSegmentedControl"] {
+        background: #1a2835;
+        border-radius: 8px;
+        padding: 4px;
+    }
+    div[data-testid="stSegmentedControl"] button {
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+    }
+    div[data-testid="stSegmentedControl"] button[aria-checked="true"] {
+        background: #d4a054 !important;
+        color: #0f1923 !important;
+    }
+
+    .stSelectbox label, .stMultiSelect label, .stSlider label {
+        font-size: 0.78rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.06em !important;
+        color: #6b7280 !important;
+    }
+
     #MainMenu, footer, header { visibility: hidden; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
 FEATURE_LABELS = {
-    "co2_per_capita": "CO₂ per capita (t)",
-    "co2_growth_prct": "CO₂ growth (%)",
-    "cumulative_co2": "Cumulative CO₂ (Mt)",
-    "share_global_co2": "Share of global CO₂ (%)",
-    "energy_per_capita": "Energy per capita",
+    "co2_per_capita": "CO₂ / capita",
+    "co2_growth_prct": "CO₂ growth",
+    "cumulative_co2": "Cumulative CO₂",
+    "share_global_co2": "Global share",
+    "energy_per_capita": "Energy / capita",
     "land_use_change_co2": "Land-use CO₂",
-    "methane_per_capita": "Methane per capita",
-    "nitrous_oxide_per_capita": "N₂O per capita",
-    "co2_per_gdp": "CO₂ per GDP",
-    "population_millions": "Population (M)",
-    "co2_5yr_mean_growth": "5-yr mean CO₂ growth (%)",
-    "years_since_1990": "Years since 1990",
+    "methane_per_capita": "Methane / capita",
+    "nitrous_oxide_per_capita": "N₂O / capita",
+    "co2_per_gdp": "CO₂ / GDP",
+    "population_millions": "Population",
+    "co2_5yr_mean_growth": "5-yr CO₂ trend",
+    "years_since_1990": "Yrs since 1990",
 }
 
-CHART_COLORS = ["#3d5a4c", "#8b6914", "#6b5b95", "#4a6670", "#9b4d3a"]
+CHART_COLORS = ["#d4a054", "#3d6b5a", "#5b7c99", "#9b6b5c", "#6b5b8a", "#4a8a7a"]
 
 
-with st.sidebar:
-    st.title("Climate Signal")
-    st.caption("OWID emissions panel · country-year classifier")
-    page = st.radio("Go to", ["Lookup", "Trends", "Evaluation"], label_visibility="collapsed")
-    st.divider()
-    st.markdown("[OWID CO₂ data](https://ourworldindata.org/co2-emissions)")
-    st.markdown("[GitHub repo](https://github.com/sanialolidk/climate-signal)")
-    st.caption("Sania Thankan · Penn State CDS")
+def topbar():
+    st.markdown(
+        """
+        <div class="topbar">
+            <div class="topbar-brand">climate <span>signal</span></div>
+            <div class="topbar-meta">OWID panel · 161 countries · Penn State CDS</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def format_feature(val, feat):
+    if pd.isna(val):
+        return "—"
+    if feat in ("co2_per_capita", "methane_per_capita", "nitrous_oxide_per_capita"):
+        return f"{val:.3f}"
+    if feat == "cumulative_co2":
+        return f"{val:,.0f}"
+    if feat == "population_millions":
+        return f"{val:.1f}M"
+    return f"{val:.2f}"
+
+
+def render_feature_grid(row):
+    cells = ""
+    for feat in FEATURES:
+        val = row.get(feat, 0)
+        cells += (
+            f'<div class="name">{FEATURE_LABELS.get(feat, feat)}</div>'
+            f'<div class="val">{format_feature(val, feat)}</div>'
+        )
+    truth = "yes" if row.get(TARGET) else "no"
+    cells += '<div class="name">Ground truth</div><div class="val">' + truth + "</div>"
+    st.markdown(f'<div class="feature-grid">{cells}</div>', unsafe_allow_html=True)
+
+
+topbar()
+
+page = st.segmented_control(
+    "Section",
+    ["Explore", "Panel data", "Model metrics"],
+    default="Explore",
+    label_visibility="collapsed",
+)
 
 panel = load_panel_cached()
 bundle = load_bundle()
 metrics = load_metrics()
 
-if page == "Lookup":
-    st.markdown("# Country lookup")
+if page == "Explore":
     st.markdown(
-        '<p class="subtitle">Select a country and year. Trained on rows through 2010, '
-        "evaluated on 2011+.</p>",
+        '<p class="page-lead">Pick any country-year from the OWID emissions panel. '
+        "The classifier flags profiles that match elevated GHG temperature forcing "
+        "(top quartile in the training set).</p>",
         unsafe_allow_html=True,
     )
+
+    left, mid, right = st.columns([1, 1.1, 1.2], gap="medium")
 
     countries = sorted(panel["country"].unique())
     years = sorted(panel["year"].unique())
 
-    c1, c2 = st.columns(2)
-    with c1:
+    with left:
+        st.markdown('<div class="filter-box"><h3>Parameters</h3>', unsafe_allow_html=True)
         country = st.selectbox(
             "Country",
             countries,
             index=countries.index("United States") if "United States" in countries else 0,
+            label_visibility="visible",
         )
-    with c2:
-        year = st.selectbox("Year", years, index=max(0, len(years) - 8))
+        year = st.slider("Year", int(min(years)), int(max(years)), int(max(years)) - 7)
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(
+            '<p style="font-size:0.78rem;color:#6b7280;margin-top:0.75rem;">'
+            "Train ≤ 2010 · test 2011+</p>",
+            unsafe_allow_html=True,
+        )
 
     iso = panel.loc[panel["country"] == country, "iso_code"].iloc[0]
     row = country_year_lookup(panel, iso, year)
 
-    if row is None:
-        st.warning("No data for that country-year in the OWID panel.")
-    else:
-        out = predict_country_year(row, bundle)
-        cls = "elevated" if out["label"] == 1 else ""
-        st.markdown(
-            f'<div class="result {cls}">'
-            f'<div class="card-label">Prediction · {out["probability"]:.0%}</div>'
-            f'<div class="card-value">{out["class_name"]}</div>'
-            f"</div>",
-            unsafe_allow_html=True,
-        )
+    with mid:
+        if row is None:
+            st.markdown(
+                '<div class="score-panel"><div class="score-label">No data</div>'
+                '<div class="score-verdict">Coverage gap</div>'
+                '<div class="score-sub">OWID has no row for this country-year.</div></div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            out = predict_country_year(row, bundle)
+            elevated = out["label"] == 1
+            panel_cls = "elevated" if elevated else "normal"
+            st.markdown(
+                f'<div class="score-panel {panel_cls}">'
+                f'<div class="score-label">{country} · {year}</div>'
+                f'<div class="score-big">{out["probability"]:.0%}</div>'
+                f'<div class="score-verdict">{out["class_name"]}</div>'
+                f'<div class="score-sub">Gradient boosting probability</div>'
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+            temp = row.get("temperature_change_from_ghg")
+            temp_s = f"{temp:.4f} °C" if pd.notna(temp) else "n/a"
+            st.markdown(
+                f'<span class="stat-pill">LR baseline <strong>{out["lr_probability"]:.0%}</strong></span>'
+                f'<span class="stat-pill">GHG ΔT <strong>{temp_s}</strong></span>',
+                unsafe_allow_html=True,
+            )
 
-        m1, m2, m3 = st.columns(3)
-        m1.metric("GB score", f"{out['probability']:.0%}")
-        m2.metric("LR baseline", f"{out['lr_probability']:.0%}")
-        temp = row.get("temperature_change_from_ghg")
-        m3.metric("Observed GHG ΔT", f"{temp:.4f} °C" if pd.notna(temp) else "n/a")
+    with right:
+        st.markdown('<span class="section-tag">Input features</span>', unsafe_allow_html=True)
+        if row is None:
+            st.caption("Select a valid country-year to see features.")
+        else:
+            with st.container(border=True):
+                render_feature_grid(row)
 
-        feat_rows = []
-        for f in FEATURES:
-            val = row.get(f, 0)
-            feat_rows.append({"Feature": FEATURE_LABELS.get(f, f), "Value": val})
-        feat_rows.append({"Feature": "Ground truth (elevated)", "Value": bool(row[TARGET])})
-        st.dataframe(pd.DataFrame(feat_rows), use_container_width=True, hide_index=True)
-
-elif page == "Trends":
+elif page == "Panel data":
     latest = int(panel["year"].max())
-    st.markdown("# Emissions trends")
-    st.markdown(f'<p class="subtitle">Per-capita CO₂ from the OWID panel (latest: {latest}).</p>', unsafe_allow_html=True)
+    st.markdown(
+        f'<p class="page-lead">Rankings and trajectories from the committed OWID panel '
+        f"(through {latest}).</p>",
+        unsafe_allow_html=True,
+    )
 
-    emitters = top_emitters_recent(panel, year=latest)
-    emitters = emitters.rename(columns={
-        "co2_per_capita": "CO₂/capita",
-        "temperature_change_from_ghg": "GHG ΔT",
-        "elevated_forcing": "Elevated",
-    })
-    st.dataframe(emitters, use_container_width=True, hide_index=True)
+    rank_col, chart_col = st.columns([1, 1.6], gap="large")
 
-    default = [c for c in ["United States", "China", "India", "Germany", "Brazil"] if c in set(panel["country"])]
-    picks = st.multiselect("Countries", sorted(panel["country"].unique()), default=default)
+    with rank_col:
+        st.markdown('<span class="section-tag">Top per-capita emitters</span>', unsafe_allow_html=True)
+        emitters = top_emitters_recent(panel, year=latest, n=15)
+        emitters = emitters.rename(columns={
+            "co2_per_capita": "t/cap",
+            "temperature_change_from_ghg": "ΔT",
+            "elevated_forcing": "flag",
+        })
+        emitters["flag"] = emitters["flag"].map({1: "●", 0: "○", True: "●", False: "○"})
+        st.dataframe(emitters, use_container_width=True, hide_index=True, height=420)
 
-    if picks:
-        fig, ax = plt.subplots(figsize=(10, 4))
-        for i, name in enumerate(picks):
-            grp = panel[panel["country"] == name].sort_values("year")
-            ax.plot(grp["year"], grp["co2_per_capita"], label=name, linewidth=2, color=CHART_COLORS[i % len(CHART_COLORS)])
-        ax.set_xlabel("Year")
-        ax.set_ylabel("Tonnes CO₂ per capita")
-        ax.legend(fontsize=9)
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.grid(axis="y", alpha=0.3)
-        st.pyplot(fig, use_container_width=True)
+    with chart_col:
+        st.markdown('<span class="section-tag">CO₂ per capita over time</span>', unsafe_allow_html=True)
+        default = [c for c in ["United States", "China", "India", "Germany", "Brazil"] if c in set(panel["country"])]
+        picks = st.pills("Compare", sorted(panel["country"].unique()), default=default, selection_mode="multi")
+
+        if picks:
+            fig, ax = plt.subplots(figsize=(9, 4.2))
+            fig.patch.set_facecolor("#f4f1ec")
+            for i, name in enumerate(picks):
+                grp = panel[panel["country"] == name].sort_values("year")
+                ax.plot(
+                    grp["year"], grp["co2_per_capita"],
+                    label=name, linewidth=2.2,
+                    color=CHART_COLORS[i % len(CHART_COLORS)],
+                )
+            ax.set_facecolor("#f4f1ec")
+            ax.set_xlabel("Year", fontsize=10, color="#4a5568")
+            ax.set_ylabel("t CO₂ / capita", fontsize=10, color="#4a5568")
+            ax.legend(fontsize=8, ncol=2, loc="upper left", framealpha=0.9)
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.spines["left"].set_color("#d8d2c8")
+            ax.spines["bottom"].set_color("#d8d2c8")
+            ax.tick_params(colors="#6b7280", labelsize=8)
+            ax.grid(axis="y", color="#d8d2c8", alpha=0.6)
+            st.pyplot(fig, use_container_width=True)
+        else:
+            st.caption("Select at least one country.")
 
 else:
-    st.markdown("# Evaluation")
-    st.markdown('<p class="subtitle">HistGradientBoosting vs balanced logistic regression.</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="page-lead">Holdout evaluation on country-years after 2010. '
+        "Histogram gradient boosting vs. balanced logistic regression.</p>",
+        unsafe_allow_html=True,
+    )
 
     if not metrics:
-        st.info("Run `python main.py` to generate metrics.")
+        st.info("Run `python main.py` locally to generate metrics.")
     else:
         gb = metrics["gradient_boosting"]
         base = metrics["baseline"]
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Accuracy", f"{gb['accuracy']:.1%}")
-        c2.metric("Macro F1", f"{gb['macro_f1']:.3f}")
-        c3.metric("ROC-AUC", f"{gb['roc_auc']:.3f}")
-        c4.metric("Test rows", f"{metrics['test_rows']:,}")
-
-        st.caption(f"Split: {metrics['split']} · {metrics['countries']} countries")
-
-        comp = pd.DataFrame({
-            "Metric": ["Accuracy", "Macro F1", "ROC-AUC", "Precision (elevated)", "Recall (elevated)"],
-            "Baseline": [
-                f"{base['accuracy']:.1%}", f"{base['macro_f1']:.3f}", f"{base['roc_auc']:.3f}",
-                f"{base['class_1']['precision']:.3f}", f"{base['class_1']['recall']:.3f}",
+        tiles = st.columns(4)
+        for col, (label, val) in zip(
+            tiles,
+            [
+                ("Accuracy", f"{gb['accuracy']:.1%}"),
+                ("Macro F1", f"{gb['macro_f1']:.3f}"),
+                ("ROC-AUC", f"{gb['roc_auc']:.3f}"),
+                ("Test rows", f"{metrics['test_rows']:,}"),
             ],
-            "Gradient boosting": [
-                f"{gb['accuracy']:.1%}", f"{gb['macro_f1']:.3f}", f"{gb['roc_auc']:.3f}",
-                f"{gb['class_1']['precision']:.3f}", f"{gb['class_1']['recall']:.3f}",
-            ],
-        })
-        st.dataframe(comp, use_container_width=True, hide_index=True)
+        ):
+            col.markdown(
+                f'<div class="metric-tile"><div class="n">{val}</div><div class="l">{label}</div></div>',
+                unsafe_allow_html=True,
+            )
 
-        imp = pd.DataFrame(
-            list(metrics["feature_importance"].items()),
-            columns=["feature", "importance"],
-        ).sort_values("importance", ascending=True)
+        st.caption(f"{metrics['split']} · {metrics['countries']} countries · {metrics['train_rows']:,} train rows")
 
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.barh(imp["feature"], imp["importance"], color="#3d5a4c")
-        ax.set_xlabel("Permutation importance")
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        st.pyplot(fig, use_container_width=True)
+        left, right = st.columns([1, 1.3], gap="large")
 
-        if st.checkbox("Confusion matrices"):
-            i1, i2 = st.columns(2)
-            i1.image("plots/cm_baseline.png", caption="Baseline")
-            i2.image("plots/cm_main.png", caption="Gradient boosting")
+        with left:
+            st.markdown('<span class="section-tag">Model comparison</span>', unsafe_allow_html=True)
+            rows = []
+            for name, key in [
+                ("Accuracy", "accuracy"), ("Macro F1", "macro_f1"), ("ROC-AUC", "roc_auc"),
+            ]:
+                b = base[key]
+                g = gb[key]
+                fmt = ".1%" if key == "accuracy" else ".3f"
+                rows.append({
+                    "": name,
+                    "Logistic": f"{b:{fmt}}",
+                    "GBM": f"{g:{fmt}}",
+                })
+            rows.append({"": "Prec. (elevated)", "Logistic": f"{base['class_1']['precision']:.3f}", "GBM": f"{gb['class_1']['precision']:.3f}"})
+            rows.append({"": "Recall (elevated)", "Logistic": f"{base['class_1']['recall']:.3f}", "GBM": f"{gb['class_1']['recall']:.3f}"})
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+            show_cm = st.toggle("Show confusion matrices", value=False)
+            if show_cm:
+                i1, i2 = st.columns(2)
+                i1.image("plots/cm_baseline.png", caption="Logistic")
+                i2.image("plots/cm_main.png", caption="GBM")
+
+        with right:
+            st.markdown('<span class="section-tag">Feature importance</span>', unsafe_allow_html=True)
+            imp = pd.DataFrame(
+                list(metrics["feature_importance"].items()),
+                columns=["feature", "importance"],
+            ).sort_values("importance", ascending=True)
+            fig, ax = plt.subplots(figsize=(7, 4.5))
+            fig.patch.set_facecolor("#f4f1ec")
+            ax.barh(imp["feature"], imp["importance"], color="#d4a054", height=0.6)
+            ax.set_facecolor("#f4f1ec")
+            ax.set_xlabel("Permutation importance", fontsize=10, color="#4a5568")
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.spines["left"].set_color("#d8d2c8")
+            ax.spines["bottom"].set_color("#d8d2c8")
+            ax.tick_params(colors="#6b7280", labelsize=8)
+            st.pyplot(fig, use_container_width=True)
 
         st.markdown(
-            '<p class="footnote">Panel rows are correlated across time. OWID coverage is thin '
-            "before ~1995 for some regions. Screening model only — not causal inference.</p>",
+            '<p class="footnote">'
+            "Panel rows correlate across time. OWID coverage is sparse before ~1995 in some regions. "
+            "This is a screening classifier, not a causal model. "
+            '<a href="https://github.com/sanialolidk/climate-signal" style="color:#0f1923;">Source on GitHub</a>'
+            "</p>",
             unsafe_allow_html=True,
         )
+
+with st.container():
+    st.markdown("---")
+    link1, link2, link3 = st.columns(3)
+    link1.link_button("OWID dataset", "https://ourworldindata.org/co2-emissions", use_container_width=True)
+    link2.link_button("GitHub repo", "https://github.com/sanialolidk/climate-signal", use_container_width=True)
+    link3.link_button("About", "https://github.com/sanialolidk/climate-signal#readme", use_container_width=True)
