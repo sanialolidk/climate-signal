@@ -20,9 +20,7 @@ st.set_page_config(
 
 CSS = """
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap');
-
-    html, body, [class*="css"] { font-family: 'Source Sans 3', 'Segoe UI', sans-serif; }
+    html, body, [class*="css"] { font-family: 'Segoe UI', system-ui, sans-serif; }
     .block-container { padding-top: 0; padding-bottom: 2rem; max-width: 1200px; }
 
     [data-testid="stSidebar"], [data-testid="collapsedControl"] { display: none; }
@@ -189,21 +187,12 @@ CSS = """
     }
     .site-footer strong { color: #1b1b1b; }
 
-    div[data-testid="stSegmentedControl"] {
-        background: #e8eaed;
-        border: 1px solid #d0d5dc;
-        border-radius: 4px;
-        padding: 3px;
-    }
-    div[data-testid="stSegmentedControl"] button {
-        font-size: 0.82rem !important;
-        font-weight: 600 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.04em !important;
-    }
-    div[data-testid="stSegmentedControl"] button[aria-checked="true"] {
-        background: #1a4480 !important;
-        color: #ffffff !important;
+    .stTabs [data-baseweb="tab-list"] { gap: 0.35rem; }
+    .stTabs [data-baseweb="tab"] {
+        font-weight: 600;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
     }
 
     .stSelectbox label, .stSlider label {
@@ -250,6 +239,12 @@ def format_confidence(probability):
     return f"{probability * 100:.1f}%"
 
 
+def as_bool_flag(value):
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return False
+    return bool(int(value))
+
+
 def severity_level(observed_elevated, temp, panel):
     """Green / amber / red from observed impact — never from model confidence."""
     if not observed_elevated:
@@ -264,7 +259,7 @@ def severity_level(observed_elevated, temp, panel):
 
 def render_result_card(country, year, out, row, panel):
     temp = row.get("temperature_change_from_ghg")
-    observed = bool(int(row.get(TARGET, 0)))
+    observed = as_bool_flag(row.get(TARGET, 0))
     severity = severity_level(observed, temp, panel)
     accent = SEVERITY_COLORS[severity]
     temp_s = f"{temp:.4f} °C" if pd.notna(temp) else "Not available"
@@ -351,7 +346,7 @@ def render_indicators(row):
         label = FEATURE_LABELS.get(feat, feat)
         val = format_value(row.get(feat, 0), feat)
         rows_html += f"<tr><td>{label}</td><td class='val'>{val}</td></tr>"
-    observed = "Elevated" if row.get(TARGET) else "Standard"
+    observed = "Elevated" if as_bool_flag(row.get(TARGET, 0)) else "Standard"
     rows_html += f"<tr><td>Observed GHG Forcing Classification</td><td class='val'>{observed}</td></tr>"
     st.markdown(
         f'<table class="indicator-table"><tr><th>Indicator</th><th style="text-align:right">Value</th></tr>{rows_html}</table>',
@@ -377,18 +372,22 @@ def site_footer():
 
 site_header()
 
-page = st.segmented_control(
-    "Navigation",
-    ["Country Assessment", "Emissions Data", "Model Validation"],
-    default="Country Assessment",
-    label_visibility="collapsed",
+try:
+    panel = load_panel_cached()
+except Exception as exc:
+    st.error(f"Failed to load reference dataset: {exc}")
+    st.stop()
+
+tab_assess, tab_data, tab_valid = st.tabs(
+    ["Country Assessment", "Emissions Data", "Model Validation"]
 )
 
-panel = load_panel_cached()
-bundle = load_bundle()
-metrics = load_metrics()
-
-if page == "Country Assessment":
+with tab_assess:
+    try:
+        bundle = load_bundle()
+    except Exception as exc:
+        st.error(f"Failed to load model bundle: {exc}")
+        st.stop()
     st.markdown('<h2 class="page-title">Country Assessment</h2>', unsafe_allow_html=True)
     st.markdown(
         '<p class="page-desc">Select a jurisdiction and reporting year to obtain a machine learning '
@@ -405,8 +404,19 @@ if page == "Country Assessment":
     with left:
         st.markdown('<p class="section-heading">Query Parameters</p>', unsafe_allow_html=True)
         with st.container(border=True):
-            country = st.selectbox("Jurisdiction", countries, index=countries.index("United States") if "United States" in countries else 0)
-            year = st.slider("Reporting Year", int(min(years)), int(max(years)), int(max(years)) - 7)
+            country = st.selectbox(
+                "Jurisdiction",
+                countries,
+                index=countries.index("United States") if "United States" in countries else 0,
+                key="jurisdiction",
+            )
+            year = st.slider(
+                "Reporting Year",
+                int(min(years)),
+                int(max(years)),
+                int(max(years)) - 7,
+                key="reporting_year",
+            )
         st.caption("Training period: years ≤ 2010 · Evaluation period: years > 2010")
 
     iso = panel.loc[panel["country"] == country, "iso_code"].iloc[0]
@@ -434,7 +444,7 @@ if page == "Country Assessment":
             render_indicators(row)
             st.markdown("</div>", unsafe_allow_html=True)
 
-elif page == "Emissions Data":
+with tab_data:
     latest = int(panel["year"].max())
     st.markdown('<h2 class="page-title">Emissions Data</h2>', unsafe_allow_html=True)
     st.markdown(
@@ -468,6 +478,7 @@ elif page == "Emissions Data":
             "Jurisdictions for Comparison",
             sorted(panel["country"].unique()),
             default=default,
+            key="chart_countries",
         )
 
         if picks:
@@ -487,10 +498,12 @@ elif page == "Emissions Data":
             ax.tick_params(colors="#6b7280", labelsize=8)
             ax.grid(axis="y", color="#d0d5dc", alpha=0.7)
             st.pyplot(fig, use_container_width=True)
+            plt.close(fig)
         else:
             st.caption("Please select one or more jurisdictions to display the time series.")
 
-else:
+with tab_valid:
+    metrics = load_metrics()
     st.markdown('<h2 class="page-title">Model Validation</h2>', unsafe_allow_html=True)
     st.markdown(
         '<p class="page-desc">Performance metrics for the primary classification model '
@@ -574,6 +587,7 @@ else:
             ax.spines["bottom"].set_color("#d0d5dc")
             ax.tick_params(colors="#6b7280", labelsize=8)
             st.pyplot(fig, use_container_width=True)
+            plt.close(fig)
 
         st.markdown(
             '<div class="disclaimer"><strong>Limitations and Disclaimer:</strong> '
