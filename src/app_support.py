@@ -1,10 +1,22 @@
 import json
+import urllib.request
 
 import joblib
 import pandas as pd
 
 from .data import FEATURES, load_panel
 from .paths import p
+
+OWID_URL = "https://nyc3.digitaloceanspaces.com/owid-public/data/co2/owid-co2-data.csv"
+
+
+def ensure_data():
+    path = p("data", "owid-co2-data.csv")
+    if path.exists():
+        return path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    urllib.request.urlretrieve(OWID_URL, path)
+    return path
 
 
 def load_bundle():
@@ -19,6 +31,7 @@ def load_metrics():
 
 
 def load_panel_cached():
+    ensure_data()
     return load_panel()
 
 
