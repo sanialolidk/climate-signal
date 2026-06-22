@@ -3,9 +3,8 @@ gatherUsageStats = false
 
 [server]
 maxUploadSize = 5
-
-[runner]
-fastReruns = true
+enableCORS = false
+enableXsrfProtection = true
 
 [theme]
 primaryColor = "#1a4480"
