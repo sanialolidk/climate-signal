@@ -91,55 +91,81 @@ CSS = """
     .result-box {
         background: #ffffff;
         border: 1px solid #d0d5dc;
-        padding: 1.5rem;
-        text-align: center;
-        min-height: 230px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+        padding: 1.25rem 1.35rem 1.1rem 1.35rem;
     }
-    .result-box.elevated { border-top: 4px solid #b50909; }
-    .result-box.standard { border-top: 4px solid #1a4480; }
+    .result-box.severity-standard { border-top: 4px solid #2e7d32; }
+    .result-box.severity-moderate { border-top: 4px solid #b35c00; }
+    .result-box.severity-high { border-top: 4px solid #b50909; }
     .result-jurisdiction {
         font-size: 0.72rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.1em;
         color: #6b7280;
-        margin-bottom: 0.4rem;
+        margin-bottom: 1rem;
+        text-align: center;
     }
-    .result-score {
-        font-size: 2.75rem;
+    .result-trio {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.75rem;
+        text-align: center;
+    }
+    .result-metric {
+        padding: 0.85rem 0.5rem;
+        border: 1px solid #e8eaed;
+        border-radius: 4px;
+        background: #f8f9fa;
+    }
+    .result-metric.primary {
+        background: #ffffff;
+        border-width: 2px;
+    }
+    .result-metric.primary.severity-standard { border-color: #2e7d32; }
+    .result-metric.primary.severity-moderate { border-color: #b35c00; }
+    .result-metric.primary.severity-high { border-color: #b50909; }
+    .result-metric .metric-label {
+        font-size: 0.68rem;
         font-weight: 700;
-        color: #1a4480;
-        line-height: 1;
-    }
-    .result-box.elevated .result-score { color: #b50909; }
-    .result-classification {
-        font-size: 1.05rem;
-        font-weight: 600;
-        color: #1b1b1b;
-        margin-top: 0.65rem;
-    }
-    .result-method {
-        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
         color: #6b7280;
-        margin-top: 0.35rem;
+        margin-bottom: 0.35rem;
     }
+    .result-metric .metric-value {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #1b1b1b;
+        line-height: 1.2;
+    }
+    .result-metric.primary.severity-standard .metric-value { color: #2e7d32; }
+    .result-metric.primary.severity-moderate .metric-value { color: #b35c00; }
+    .result-metric.primary.severity-high .metric-value { color: #b50909; }
+    .result-metric .metric-hint {
+        font-size: 0.72rem;
+        color: #6b7280;
+        margin-top: 0.3rem;
+        line-height: 1.35;
+    }
+    .result-metric.confidence .metric-value { color: #1a4480; }
 
-    .meta-row {
+    .model-explainer {
         margin-top: 0.85rem;
+        padding: 0.75rem 0.9rem;
+        background: #eef2f7;
+        border-radius: 4px;
         font-size: 0.82rem;
         color: #4a5568;
+        line-height: 1.55;
     }
-    .meta-row span {
-        display: inline-block;
-        margin-right: 1.25rem;
-        padding-right: 1.25rem;
-        border-right: 1px solid #d0d5dc;
+    .model-explainer strong { color: #1b1b1b; }
+
+    .baseline-note {
+        margin-top: 0.55rem;
+        font-size: 0.78rem;
+        color: #6b7280;
+        text-align: center;
     }
-    .meta-row span:last-child { border-right: none; }
-    .meta-row strong { color: #1b1b1b; }
 
     .section-heading {
         font-size: 0.72rem;
@@ -261,6 +287,57 @@ FEATURE_LABELS = {
 CHART_COLORS = ["#1a4480", "#2e6ba8", "#4a8bc4", "#6b5b95", "#3d6b5a", "#5c4a3a"]
 
 
+def severity_level(elevated, temp, panel):
+    """Map observed impact to green / amber / red — not model confidence."""
+    if not elevated:
+        return "standard"
+    if temp is None or pd.isna(temp):
+        return "moderate"
+    temps = panel["temperature_change_from_ghg"].dropna()
+    if temp >= temps.quantile(0.9):
+        return "high"
+    if temp >= temps.quantile(0.75):
+        return "moderate"
+    return "moderate"
+
+
+def render_result_card(country, year, out, row, panel):
+    elevated = out["label"] == 1
+    temp = row.get("temperature_change_from_ghg")
+    severity = severity_level(elevated, temp, panel)
+    temp_s = f"{temp:.4f} °C" if pd.notna(temp) else "Not available"
+
+    st.markdown(
+        f'<div class="result-box severity-{severity}">'
+        f'<div class="result-jurisdiction">{country} &mdash; {year}</div>'
+        f'<div class="result-trio">'
+        f'<div class="result-metric primary severity-{severity}">'
+        f'<div class="metric-label">Classification</div>'
+        f'<div class="metric-value">{out["class_name"]}</div>'
+        f'<div class="metric-hint">Model-assigned emissions profile</div>'
+        f"</div>"
+        f'<div class="result-metric primary severity-{severity}">'
+        f'<div class="metric-label">GHG Temperature Impact</div>'
+        f'<div class="metric-value">{temp_s}</div>'
+        f'<div class="metric-hint">Observed change attributed to greenhouse gases</div>'
+        f"</div>"
+        f'<div class="result-metric confidence">'
+        f'<div class="metric-label">Model Confidence</div>'
+        f'<div class="metric-value">{out["probability"]:.1%}</div>'
+        f'<div class="metric-hint">Likelihood of matching this profile type</div>'
+        f"</div>"
+        f"</div>"
+        f'<div class="model-explainer">'
+        f"<strong>How to read this:</strong> Classification and temperature impact describe the "
+        f"observed emissions outcome. Model confidence measures how closely this country-year "
+        f"resembles others in the same class — a high percentage is not itself a severity warning. "
+        f"Comparison baseline (logistic regression): <strong>{out['lr_probability']:.1%}</strong>."
+        f"</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+
 def site_header():
     st.markdown(
         """
@@ -348,16 +425,11 @@ if page == "Country Assessment":
     years = sorted(panel["year"].unique())
 
     with left:
-        st.markdown('<div class="panel-box"><h4>Query Parameters</h4>', unsafe_allow_html=True)
-        country = st.selectbox("Jurisdiction", countries, index=countries.index("United States") if "United States" in countries else 0)
-        year = st.slider("Reporting Year", int(min(years)), int(max(years)), int(max(years)) - 7)
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown(
-            '<p style="font-size:0.78rem;color:#6b7280;margin-top:0.75rem;line-height:1.5;">'
-            "<strong>Training period:</strong> years &le; 2010<br>"
-            "<strong>Evaluation period:</strong> years &gt; 2010</p>",
-            unsafe_allow_html=True,
-        )
+        st.markdown('<p class="section-heading">Query Parameters</p>', unsafe_allow_html=True)
+        with st.container(border=True):
+            country = st.selectbox("Jurisdiction", countries, index=countries.index("United States") if "United States" in countries else 0)
+            year = st.slider("Reporting Year", int(min(years)), int(max(years)), int(max(years)) - 7)
+        st.caption("Training period: years ≤ 2010 · Evaluation period: years > 2010")
 
     iso = panel.loc[panel["country"] == country, "iso_code"].iloc[0]
     row = country_year_lookup(panel, iso, year)
@@ -375,26 +447,7 @@ if page == "Country Assessment":
             )
         else:
             out = predict_country_year(row, bundle)
-            elevated = out["label"] == 1
-            box_cls = "elevated" if elevated else "standard"
-            st.markdown(
-                f'<div class="result-box {box_cls}">'
-                f'<div class="result-jurisdiction">{country} &mdash; {year}</div>'
-                f'<div class="result-score">{out["probability"]:.1%}</div>'
-                f'<div class="result-classification">{out["class_name"]}</div>'
-                f'<div class="result-method">HistGradientBoosting Classifier &mdash; Estimated Probability</div>'
-                f"</div>",
-                unsafe_allow_html=True,
-            )
-            temp = row.get("temperature_change_from_ghg")
-            temp_s = f"{temp:.4f} &deg;C" if pd.notna(temp) else "Not available"
-            st.markdown(
-                f'<div class="meta-row">'
-                f"<span>Baseline Model (Logistic Regression): <strong>{out['lr_probability']:.1%}</strong></span>"
-                f"<span>Observed GHG Temperature Change: <strong>{temp_s}</strong></span>"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
+            render_result_card(country, year, out, row, panel)
 
     with right:
         st.markdown('<p class="section-heading">Emissions Indicators</p>', unsafe_allow_html=True)
