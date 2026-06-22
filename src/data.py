@@ -19,12 +19,21 @@ FEATURES = [
 ]
 
 TARGET = "elevated_forcing"
+PANEL_PATH = p("data", "panel.csv")
 
 
-def load_panel(csv_path=None, min_year=1990):
-    # OWID export — filter to ISO countries with enough history
-    path = p("data", "owid-co2-data.csv") if csv_path is None else csv_path
-    raw = pd.read_csv(path)
+def load_panel():
+    """Load pre-built panel shipped in the repo (works on Streamlit Cloud)."""
+    if not PANEL_PATH.exists():
+        raise FileNotFoundError(
+            f"Missing {PANEL_PATH}. Run: python scripts/build_panel.py"
+        )
+    return pd.read_csv(PANEL_PATH)
+
+
+def build_panel_from_owid(csv_path, min_year=1990):
+    """Build panel from raw OWID export — local training only."""
+    raw = pd.read_csv(csv_path)
     raw = raw[raw["year"] >= min_year].copy()
     raw = raw[raw["iso_code"].notna() & (raw["iso_code"].str.len() == 3)]
     raw = raw[~raw["iso_code"].isin(["OWID_WRL"])]
@@ -44,8 +53,7 @@ def load_panel(csv_path=None, min_year=1990):
     raw[TARGET] = np.where(valid, (temp >= cutoff).astype(int), np.nan)
 
     keep = FEATURES + [TARGET, "country", "year", "iso_code", "temperature_change_from_ghg"]
-    panel = raw[keep].dropna(subset=FEATURES + [TARGET])
-    return panel.reset_index(drop=True)
+    return raw[keep].dropna(subset=FEATURES + [TARGET]).reset_index(drop=True)
 
 
 def split_by_year(panel, train_end=2010):

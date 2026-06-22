@@ -5,7 +5,3 @@ data/owid-co2-data.csv
 models/*.pkl
 !models/bundle.pkl
 !models/metrics.json
-plots/*.png
-!plots/cm_baseline.png
-!plots/cm_main.png
-!plots/feature_importance.png

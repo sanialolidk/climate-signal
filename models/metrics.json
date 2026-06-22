@@ -1,5 +1,5 @@
 {
-  "source": "Our World in Data CO2 dataset (owid-co2-data.csv)",
+  "source": "Our World in Data CO2 dataset (data/panel.csv)",
   "task": "Flag country-years with elevated GHG temperature forcing",
   "split": "train <= 2010, test > 2010",
   "train_rows": 3179,

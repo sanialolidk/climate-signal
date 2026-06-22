@@ -1,28 +1,19 @@
 import json
-import urllib.request
 
 import joblib
 import pandas as pd
+import streamlit as st
 
-from .data import FEATURES, load_panel
+from .data import FEATURES, TARGET, load_panel
 from .paths import p
 
-OWID_URL = "https://nyc3.digitaloceanspaces.com/owid-public/data/co2/owid-co2-data.csv"
 
-
-def ensure_data():
-    path = p("data", "owid-co2-data.csv")
-    if path.exists():
-        return path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    urllib.request.urlretrieve(OWID_URL, path)
-    return path
-
-
+@st.cache_resource
 def load_bundle():
     return joblib.load(p("models", "bundle.pkl"))
 
 
+@st.cache_data
 def load_metrics():
     path = p("models", "metrics.json")
     if not path.exists():
@@ -30,8 +21,8 @@ def load_metrics():
     return json.loads(path.read_text())
 
 
+@st.cache_data
 def load_panel_cached():
-    ensure_data()
     return load_panel()
 
 
@@ -49,7 +40,6 @@ def predict_country_year(row_dict, bundle):
         "class_name": "Elevated forcing" if gb_l else "Within normal range",
         "probability": gb_p,
         "lr_probability": lr_p,
-        "actual_temp_change": row_dict.get("temperature_change_from_ghg"),
     }
 
 
@@ -67,6 +57,8 @@ def top_emitters_recent(panel, year=None, n=12):
     else:
         sub = sub[sub["year"] == sub["year"].max()]
     return (
-        sub.nlargest(n, "co2_per_capita")[["country", "iso_code", "year", "co2_per_capita", "temperature_change_from_ghg", TARGET]]
+        sub.nlargest(n, "co2_per_capita")[
+            ["country", "iso_code", "year", "co2_per_capita", "temperature_change_from_ghg", TARGET]
+        ]
         .rename(columns={TARGET: "elevated_forcing"})
     )

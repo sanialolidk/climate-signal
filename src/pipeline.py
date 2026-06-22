@@ -123,7 +123,7 @@ def run(train_end=2010):
     joblib.dump(bundle, p("models", "bundle.pkl"))
 
     metrics = {
-        "source": "Our World in Data CO2 dataset (owid-co2-data.csv)",
+        "source": "Our World in Data CO2 dataset (data/panel.csv)",
         "task": "Flag country-years with elevated GHG temperature forcing",
         "split": f"train <= {train_end}, test > {train_end}",
         "train_rows": int(len(train_df)),

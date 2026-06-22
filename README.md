@@ -2,23 +2,25 @@
 
 Sania Thankan — Penn State, Computational Data Science
 
-Small ML project I built on the [Our World in Data CO₂ dataset](https://github.com/owid/co2-data). It flags country-years that sit in the top quartile of GHG-attributed temperature change, using emissions features (per-capita CO₂, cumulative totals, methane, land-use change, etc.).
+Classifies country-years with elevated GHG temperature forcing using the [Our World in Data CO₂ dataset](https://ourworldindata.org/co2-emissions). Time split: train ≤ 2010, test > 2010.
 
-I used a time split (train ≤ 2010, test > 2010) instead of shuffling rows because the data is a panel.
-
-**Live app:** https://climate-signal.streamlit.app *(deploy after first push)*
+**Live app:** deploy from [share.streamlit.io](https://share.streamlit.io) → `sanialolidk/climate-signal` → `app.py`
 
 ## Run locally
 
 ```bash
 git clone https://github.com/sanialolidk/climate-signal.git
 cd climate-signal
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements-train.txt
-python scripts/download_data.py
-python main.py
 streamlit run app.py
+```
+
+Retrain (optional):
+
+```bash
+python scripts/build_panel.py   # refreshes data/panel.csv from OWID
+python main.py                  # writes models/ and plots/
 ```
 
 ## Results (holdout 2011+)
@@ -28,11 +30,11 @@ streamlit run app.py
 | Logistic regression | 0.90 | 0.90 | 0.979 |
 | HistGradientBoosting | 0.94 | 0.94 | 0.988 |
 
-## Notes
+## Deploy notes
 
-- 161 countries, ~5k train rows after filtering missing fields
-- Permutation importance: population scale and cumulative CO₂ matter most
-- This is not a weather model — just emissions panel classification
+- `data/panel.csv` is committed (~560 KB) so Streamlit Cloud never downloads OWID at runtime
+- Use `environment.yml` only (Python 3.11.9)
+- Main file: `app.py`
 
 ## Stack
 
