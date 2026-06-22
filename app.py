@@ -14,7 +14,6 @@ from src.data import FEATURES, TARGET
 
 st.set_page_config(
     page_title="Climate Signal | GHG Emissions Classification",
-    page_icon=None,
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -88,83 +87,34 @@ CSS = """
         margin: 0 0 1rem 0;
     }
 
-    .result-box {
-        background: #ffffff;
-        border: 1px solid #d0d5dc;
-        padding: 1.25rem 1.35rem 1.1rem 1.35rem;
-    }
-    .result-box.severity-standard { border-top: 4px solid #2e7d32; }
-    .result-box.severity-moderate { border-top: 4px solid #b35c00; }
-    .result-box.severity-high { border-top: 4px solid #b50909; }
-    .result-jurisdiction {
-        font-size: 0.72rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: #6b7280;
-        margin-bottom: 1rem;
-        text-align: center;
-    }
-    .result-trio {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 0.75rem;
-        text-align: center;
-    }
-    .result-metric {
-        padding: 0.85rem 0.5rem;
-        border: 1px solid #e8eaed;
-        border-radius: 4px;
-        background: #f8f9fa;
-    }
-    .result-metric.primary {
-        background: #ffffff;
-        border-width: 2px;
-    }
-    .result-metric.primary.severity-standard { border-color: #2e7d32; }
-    .result-metric.primary.severity-moderate { border-color: #b35c00; }
-    .result-metric.primary.severity-high { border-color: #b50909; }
-    .result-metric .metric-label {
+    .result-kicker {
         font-size: 0.68rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.07em;
         color: #6b7280;
-        margin-bottom: 0.35rem;
+        margin: 0 0 0.35rem 0;
+        text-align: center;
     }
-    .result-metric .metric-value {
+    .result-primary {
         font-size: 1.35rem;
         font-weight: 700;
-        color: #1b1b1b;
-        line-height: 1.2;
-    }
-    .result-metric.primary.severity-standard .metric-value { color: #2e7d32; }
-    .result-metric.primary.severity-moderate .metric-value { color: #b35c00; }
-    .result-metric.primary.severity-high .metric-value { color: #b50909; }
-    .result-metric .metric-hint {
-        font-size: 0.72rem;
-        color: #6b7280;
-        margin-top: 0.3rem;
-        line-height: 1.35;
-    }
-    .result-metric.confidence .metric-value { color: #1a4480; }
-
-    .model-explainer {
-        margin-top: 0.85rem;
-        padding: 0.75rem 0.9rem;
-        background: #eef2f7;
-        border-radius: 4px;
-        font-size: 0.82rem;
-        color: #4a5568;
-        line-height: 1.55;
-    }
-    .model-explainer strong { color: #1b1b1b; }
-
-    .baseline-note {
-        margin-top: 0.55rem;
-        font-size: 0.78rem;
-        color: #6b7280;
+        line-height: 1.25;
+        margin: 0;
         text-align: center;
+    }
+    .severity-legend {
+        font-size: 0.76rem;
+        color: #6b7280;
+        margin-bottom: 0.65rem;
+    }
+    .severity-legend .dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin: 0 0.2rem 0 0.65rem;
+        vertical-align: middle;
     }
 
     .section-heading {
@@ -285,56 +235,84 @@ FEATURE_LABELS = {
 }
 
 CHART_COLORS = ["#1a4480", "#2e6ba8", "#4a8bc4", "#6b5b95", "#3d6b5a", "#5c4a3a"]
+SEVERITY_COLORS = {"standard": "#2e7d32", "moderate": "#b35c00", "high": "#b50909"}
+SEVERITY_LABELS = {
+    "standard": "Standard observed impact",
+    "moderate": "Elevated observed impact",
+    "high": "High observed impact",
+}
 
 
-def severity_level(elevated, temp, panel):
-    """Map observed impact to green / amber / red — not model confidence."""
-    if not elevated:
+def format_confidence(probability):
+    """Avoid misleading 100.0% when the model saturates near 1."""
+    if probability >= 0.9995:
+        return ">99.9%"
+    return f"{probability * 100:.1f}%"
+
+
+def severity_level(observed_elevated, temp, panel):
+    """Green / amber / red from observed impact — never from model confidence."""
+    if not observed_elevated:
         return "standard"
     if temp is None or pd.isna(temp):
         return "moderate"
     temps = panel["temperature_change_from_ghg"].dropna()
     if temp >= temps.quantile(0.9):
         return "high"
-    if temp >= temps.quantile(0.75):
-        return "moderate"
     return "moderate"
 
 
 def render_result_card(country, year, out, row, panel):
-    elevated = out["label"] == 1
     temp = row.get("temperature_change_from_ghg")
-    severity = severity_level(elevated, temp, panel)
+    observed = bool(int(row.get(TARGET, 0)))
+    severity = severity_level(observed, temp, panel)
+    accent = SEVERITY_COLORS[severity]
     temp_s = f"{temp:.4f} °C" if pd.notna(temp) else "Not available"
+    conf = format_confidence(out["probability"])
+    lr_conf = format_confidence(out["lr_probability"])
 
+    st.caption(f"{country} — {year}")
     st.markdown(
-        f'<div class="result-box severity-{severity}">'
-        f'<div class="result-jurisdiction">{country} &mdash; {year}</div>'
-        f'<div class="result-trio">'
-        f'<div class="result-metric primary severity-{severity}">'
-        f'<div class="metric-label">Classification</div>'
-        f'<div class="metric-value">{out["class_name"]}</div>'
-        f'<div class="metric-hint">Model-assigned emissions profile</div>'
-        f"</div>"
-        f'<div class="result-metric primary severity-{severity}">'
-        f'<div class="metric-label">GHG Temperature Impact</div>'
-        f'<div class="metric-value">{temp_s}</div>'
-        f'<div class="metric-hint">Observed change attributed to greenhouse gases</div>'
-        f"</div>"
-        f'<div class="result-metric confidence">'
-        f'<div class="metric-label">Model Confidence</div>'
-        f'<div class="metric-value">{out["probability"]:.1%}</div>'
-        f'<div class="metric-hint">Likelihood of matching this profile type</div>'
-        f"</div>"
-        f"</div>"
-        f'<div class="model-explainer">'
-        f"<strong>How to read this:</strong> Classification and temperature impact describe the "
-        f"observed emissions outcome. Model confidence measures how closely this country-year "
-        f"resembles others in the same class — a high percentage is not itself a severity warning. "
-        f"Comparison baseline (logistic regression): <strong>{out['lr_probability']:.1%}</strong>."
-        f"</div>"
-        f"</div>",
+        f'<p class="severity-legend">Severity scale (observed impact): '
+        f'<span class="dot" style="background:#2e7d32"></span>Standard '
+        f'<span class="dot" style="background:#b35c00"></span>Elevated '
+        f'<span class="dot" style="background:#b50909"></span>High '
+        f"&mdash; {SEVERITY_LABELS[severity]}</p>",
         unsafe_allow_html=True,
+    )
+
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        with st.container(border=True):
+            st.markdown('<p class="result-kicker">Classification</p>', unsafe_allow_html=True)
+            st.markdown(
+                f'<p class="result-primary" style="color:{accent}">{out["class_name"]}</p>',
+                unsafe_allow_html=True,
+            )
+            st.caption("Model-assigned emissions profile type")
+    with m2:
+        with st.container(border=True):
+            st.markdown('<p class="result-kicker">GHG Temperature Impact</p>', unsafe_allow_html=True)
+            st.markdown(
+                f'<p class="result-primary" style="color:{accent}">{temp_s}</p>',
+                unsafe_allow_html=True,
+            )
+            st.caption("Observed change attributed to greenhouse gases")
+    with m3:
+        with st.container(border=True):
+            st.markdown('<p class="result-kicker">Model Confidence</p>', unsafe_allow_html=True)
+            st.markdown(
+                f'<p class="result-primary" style="color:#1a4480">{conf}</p>',
+                unsafe_allow_html=True,
+            )
+            st.caption("Profile match probability — not a severity score")
+
+    st.info(
+        f"**How to read this:** Classification and temperature describe observed outcomes. "
+        f"Model confidence ({conf}) shows how closely this record matches its assigned class in "
+        f"training data — it is **not** a danger rating. "
+        f"Primary model: gradient boosting classifier. "
+        f"Comparison baseline (logistic regression): {lr_conf}."
     )
 
 
@@ -437,14 +415,7 @@ if page == "Country Assessment":
     with mid:
         st.markdown('<p class="section-heading">Classification Result</p>', unsafe_allow_html=True)
         if row is None:
-            st.markdown(
-                '<div class="result-box">'
-                '<div class="result-jurisdiction">Data Unavailable</div>'
-                '<div class="result-classification">No Record Found</div>'
-                '<div class="result-method">The selected jurisdiction and reporting year '
-                "are not present in the reference dataset.</div></div>",
-                unsafe_allow_html=True,
-            )
+            st.warning("No record found for this jurisdiction and reporting year in the reference dataset.")
         else:
             out = predict_country_year(row, bundle)
             render_result_card(country, year, out, row, panel)
@@ -486,14 +457,18 @@ elif page == "Emissions Data":
             "elevated_forcing": "Classification",
         })
         emitters["Classification"] = emitters["Classification"].map(
-            {1: "Elevated", 0: "Standard", True: "Elevated", False: "Standard"}
+            {1: "Elevated", 0: "Standard", 1.0: "Elevated", 0.0: "Standard", True: "Elevated", False: "Standard"}
         )
         st.dataframe(emitters, use_container_width=True, hide_index=True, height=440)
 
     with chart_col:
         st.markdown('<p class="section-heading">Per-Capita CO₂ Emissions &mdash; Time Series</p>', unsafe_allow_html=True)
         default = [c for c in ["United States", "China", "India", "Germany", "Brazil"] if c in set(panel["country"])]
-        picks = st.pills("Jurisdictions for Comparison", sorted(panel["country"].unique()), default=default, selection_mode="multi")
+        picks = st.multiselect(
+            "Jurisdictions for Comparison",
+            sorted(panel["country"].unique()),
+            default=default,
+        )
 
         if picks:
             fig, ax = plt.subplots(figsize=(9, 4.2))
