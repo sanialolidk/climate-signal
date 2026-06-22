@@ -21,7 +21,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 — Vite proxies `/api` to the backend.
+Open https://climate-signal-fmmu6szzappwzmblrzafjek.streamlit.app/ — Vite proxies `/api` to the backend.
 
 ### API endpoints
 
