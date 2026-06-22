@@ -37,7 +37,7 @@ def predict_country_year(row_dict, bundle):
 
     return {
         "label": gb_l,
-        "class_name": "Elevated forcing" if gb_l else "Within normal range",
+        "class_name": "Elevated GHG Forcing" if gb_l else "Standard Emissions Profile",
         "probability": gb_p,
         "lr_probability": lr_p,
     }
