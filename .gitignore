@@ -1,6 +1,8 @@
 venv/
 __pycache__/
 .DS_Store
+frontend/node_modules/
+frontend/dist/
 data/owid-co2-data.csv
 models/*.pkl
 !models/bundle.pkl

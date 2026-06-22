@@ -4,23 +4,47 @@ Sania Thankan — Penn State, Computational Data Science
 
 Classifies country-years with elevated GHG temperature forcing using the [Our World in Data CO₂ dataset](https://ourworldindata.org/co2-emissions). Time split: train ≤ 2010, test > 2010.
 
-**Live app:** deploy from [share.streamlit.io](https://share.streamlit.io) → `sanialolidk/climate-signal` → `app.py`
+## React frontend (recommended)
 
-## Run locally
-
+**Terminal 1 — API**
 ```bash
-git clone https://github.com/sanialolidk/climate-signal.git
 cd climate-signal
 python3 -m venv venv && source venv/bin/activate
+pip install -r requirements-api.txt
+uvicorn api.main:app --reload --port 8000
+```
+
+**Terminal 2 — React UI**
+```bash
+cd climate-signal/frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173 — Vite proxies `/api` to the backend.
+
+### API endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/meta` | Countries, year range |
+| `GET /api/assess?country=&year=` | Classification + indicators |
+| `GET /api/emitters` | Top per-capita emitters |
+| `GET /api/timeseries?countries=` | CO₂ time series |
+| `GET /api/metrics` | Model validation stats |
+
+## Streamlit app (legacy)
+
+```bash
 pip install -r requirements-train.txt
 streamlit run app.py
 ```
 
-Retrain (optional):
+## Train model
 
 ```bash
-python scripts/build_panel.py   # refreshes data/panel.csv from OWID
-python main.py                  # writes models/ and plots/
+python scripts/build_panel.py   # refresh data/panel.csv from OWID
+python main.py
 ```
 
 ## Results (holdout 2011+)
@@ -30,12 +54,6 @@ python main.py                  # writes models/ and plots/
 | Logistic regression | 0.90 | 0.90 | 0.979 |
 | HistGradientBoosting | 0.94 | 0.94 | 0.988 |
 
-## Deploy notes
-
-- `data/panel.csv` is committed (~560 KB) so Streamlit Cloud never downloads OWID at runtime
-- Use `environment.yml` only (Python 3.11.9)
-- Main file: `app.py`
-
 ## Stack
 
-Python, pandas, scikit-learn, matplotlib, streamlit
+Python, FastAPI, React, Vite, Recharts, scikit-learn
