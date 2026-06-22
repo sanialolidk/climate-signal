@@ -1,3 +1,5 @@
+print("[climate-signal] starting app.py", flush=True)
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -123,13 +125,15 @@ SEVERITY_LABELS = {
 PAGES = ["Country Assessment", "Emissions Data", "Model Validation"]
 
 
-@st.cache_resource(show_spinner=False)
+@st.cache_resource(show_spinner="Loading model…")
 def get_bundle():
+    print("[climate-signal] loading model bundle", flush=True)
     return load_bundle()
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner="Loading dataset…")
 def get_panel():
+    print("[climate-signal] loading panel csv", flush=True)
     return load_panel_cached()
 
 
@@ -468,4 +472,8 @@ def main():
     site_footer()
 
 
-main()
+try:
+    main()
+except Exception:
+    st.exception("Application error")
+    raise

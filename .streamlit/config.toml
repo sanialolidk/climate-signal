@@ -1,11 +1,6 @@
 [browser]
 gatherUsageStats = false
 
-[server]
-maxUploadSize = 5
-enableCORS = false
-enableXsrfProtection = true
-
 [theme]
 primaryColor = "#1a4480"
 backgroundColor = "#f8f9fa"

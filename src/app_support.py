@@ -2,18 +2,15 @@ import json
 
 import joblib
 import pandas as pd
-import streamlit as st
 
 from .data import FEATURES, TARGET, load_panel
 from .paths import p
 
 
-@st.cache_resource
 def load_bundle():
     return joblib.load(p("models", "bundle.pkl"))
 
 
-@st.cache_data
 def load_metrics():
     path = p("models", "metrics.json")
     if not path.exists():
@@ -21,7 +18,6 @@ def load_metrics():
     return json.loads(path.read_text())
 
 
-@st.cache_data
 def load_panel_cached():
     return load_panel()
 
