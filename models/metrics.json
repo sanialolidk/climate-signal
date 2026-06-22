@@ -1,0 +1,78 @@
+{
+  "source": "Our World in Data CO2 dataset (owid-co2-data.csv)",
+  "task": "Flag country-years with elevated GHG temperature forcing",
+  "split": "train <= 2010, test > 2010",
+  "train_rows": 3179,
+  "test_rows": 1848,
+  "countries": 161,
+  "baseline": {
+    "accuracy": 0.8999,
+    "macro_f1": 0.8988,
+    "roc_auc": 0.9788,
+    "pr_auc": 0.979,
+    "class_0": {
+      "precision": 0.8585,
+      "recall": 0.9667,
+      "f1": 0.9094,
+      "support": 960
+    },
+    "class_1": {
+      "precision": 0.9583,
+      "recall": 0.8277,
+      "f1": 0.8882,
+      "support": 888
+    },
+    "confusion_matrix": [
+      [
+        928,
+        32
+      ],
+      [
+        153,
+        735
+      ]
+    ]
+  },
+  "gradient_boosting": {
+    "accuracy": 0.9421,
+    "macro_f1": 0.9417,
+    "roc_auc": 0.9881,
+    "pr_auc": 0.9885,
+    "class_0": {
+      "precision": 0.9097,
+      "recall": 0.9865,
+      "f1": 0.9465,
+      "support": 960
+    },
+    "class_1": {
+      "precision": 0.9839,
+      "recall": 0.8941,
+      "f1": 0.9369,
+      "support": 888
+    },
+    "confusion_matrix": [
+      [
+        947,
+        13
+      ],
+      [
+        94,
+        794
+      ]
+    ]
+  },
+  "cv_roc_auc_mean": 0.9561,
+  "cv_roc_auc_std": 0.0139,
+  "feature_importance": {
+    "population_millions": 0.1684,
+    "cumulative_co2": 0.0866,
+    "methane_per_capita": 0.0362,
+    "land_use_change_co2": 0.0088,
+    "nitrous_oxide_per_capita": 0.0041,
+    "share_global_co2": 0.0037,
+    "co2_per_gdp": 0.0001,
+    "co2_5yr_mean_growth": 0.0,
+    "years_since_1990": 0.0,
+    "co2_growth_prct": -0.0
+  }
+}
