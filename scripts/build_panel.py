@@ -12,8 +12,12 @@ def main():
     RAW.parent.mkdir(parents=True, exist_ok=True)
     if not RAW.exists():
         print(f"Downloading {OWID_URL}")
-        urllib.request.urlretrieve(OWID_URL, RAW)
+        try:
+            urllib.request.urlretrieve(OWID_URL, RAW)
+        except Exception as exc:
+            raise SystemExit(f"Download failed: {exc}") from exc
     panel = build_panel_from_owid(RAW)
+    PANEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     panel.to_csv(PANEL_PATH, index=False)
     print(f"Wrote {len(panel)} rows to {PANEL_PATH}")
 

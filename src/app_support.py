@@ -48,7 +48,7 @@ def country_year_lookup(panel, iso_code, year):
 
 def top_emitters_recent(panel, year=None, n=12):
     sub = panel.copy()
-    if year:
+    if year is not None:
         sub = sub[sub["year"] == year]
     else:
         sub = sub[sub["year"] == sub["year"].max()]

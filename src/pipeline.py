@@ -120,6 +120,7 @@ def run(train_end=2010):
         "train_end": train_end,
         "temp_cutoff_note": "elevated = top quartile temperature_change_from_ghg",
     }
+    p("models").mkdir(parents=True, exist_ok=True)
     joblib.dump(bundle, p("models", "bundle.pkl"))
 
     metrics = {

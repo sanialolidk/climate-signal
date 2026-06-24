@@ -57,6 +57,20 @@ def get_metrics_data():
     return load_metrics()
 
 
+def _require_panel() -> pd.DataFrame:
+    try:
+        return get_panel()
+    except FileNotFoundError as exc:
+        raise HTTPException(503, f"Dataset not available: {exc}") from exc
+
+
+def _require_bundle():
+    try:
+        return get_bundle()
+    except FileNotFoundError as exc:
+        raise HTTPException(503, f"Model not available — run python main.py first: {exc}") from exc
+
+
 def format_confidence(probability: float) -> str:
     if probability >= 0.9995:
         return ">99.9%"
@@ -127,7 +141,7 @@ def health():
 
 @app.get("/api/meta")
 def meta():
-    panel = get_panel()
+    panel = _require_panel()
     countries = sorted(panel["country"].unique().tolist())
     years = sorted(int(y) for y in panel["year"].unique())
     return {
@@ -140,18 +154,22 @@ def meta():
 
 
 @app.get("/api/assess")
-def assess(country: str = Query(...), year: int = Query(...)):
-    panel = get_panel()
+def assess(
+    country: str = Query(..., min_length=1),
+    year: int = Query(..., ge=1900, le=2100),
+):
+    panel = _require_panel()
+    country = country.strip()
     hits = panel.loc[panel["country"] == country, "iso_code"]
     if hits.empty:
-        raise HTTPException(404, f"Unknown jurisdiction: {country}")
+        raise HTTPException(404, f"Unknown jurisdiction: {country!r}")
 
     iso = hits.iloc[0]
     row = country_year_lookup(panel, iso, year)
     if row is None:
-        raise HTTPException(404, f"No data for {country} in {year}")
+        raise HTTPException(404, f"No data for {country!r} in {year}")
 
-    out = predict_country_year(row, get_bundle())
+    out = predict_country_year(row, _require_bundle())
     temp = row.get("temperature_change_from_ghg")
     observed = as_bool_flag(row.get(TARGET, 0))
     severity = severity_level(observed, temp, panel)
@@ -173,40 +191,44 @@ def assess(country: str = Query(...), year: int = Query(...)):
 
 
 @app.get("/api/emitters")
-def emitters(year: Optional[int] = None, limit: int = Query(15, ge=1, le=50)):
-    panel = get_panel()
+def emitters(
+    year: Optional[int] = Query(None, ge=1900, le=2100),
+    limit: int = Query(15, ge=1, le=50),
+):
+    panel = _require_panel()
     latest = int(panel["year"].max()) if year is None else year
     table = top_emitters_recent(panel, year=latest, n=limit)
-    records = []
-    for _, r in table.iterrows():
-        records.append({
+    records = [
+        {
             "jurisdiction": r["country"],
             "iso_code": r["iso_code"],
             "year": int(r["year"]),
             "co2_per_capita": round(float(r["co2_per_capita"]), 3),
             "temperature_change": round(float(r["temperature_change_from_ghg"]), 4),
             "classification": "Elevated" if as_bool_flag(r["elevated_forcing"]) else "Standard",
-        })
+        }
+        for r in table.to_dict("records")
+    ]
     return {"year": latest, "rows": records}
 
 
 @app.get("/api/timeseries")
 def timeseries(countries: str = Query(..., description="Comma-separated country names")):
-    panel = get_panel()
+    panel = _require_panel()
     names = [c.strip() for c in countries.split(",") if c.strip()]
     if not names:
         raise HTTPException(400, "Provide at least one country")
 
+    subset = panel[panel["country"].isin(names)][["country", "year", "co2_per_capita"]].copy()
+    subset = subset.sort_values(["country", "year"])
+
     series = []
-    for name in names:
-        grp = panel[panel["country"] == name].sort_values("year")
-        if grp.empty:
-            continue
+    for name, grp in subset.groupby("country", sort=False):
         series.append({
             "country": name,
             "points": [
-                {"year": int(row["year"]), "co2_per_capita": round(float(row["co2_per_capita"]), 3)}
-                for _, row in grp.iterrows()
+                {"year": int(r["year"]), "co2_per_capita": round(float(r["co2_per_capita"]), 3)}
+                for r in grp.to_dict("records")
             ],
         })
 
@@ -220,5 +242,5 @@ def timeseries(countries: str = Query(..., description="Comma-separated country 
 def metrics():
     data = get_metrics_data()
     if not data:
-        raise HTTPException(404, "Metrics not available")
+        raise HTTPException(404, "Metrics not available — run python main.py first")
     return data
