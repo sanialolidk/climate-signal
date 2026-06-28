@@ -12,7 +12,9 @@ import {
 import { api } from "../api/client";
 import type { EmitterRow, Meta, TimeSeries } from "../types";
 
-const COLORS = ["#1a4480", "#2e6ba8", "#4a8bc4", "#6b5b95", "#3d6b5a", "#5c4a3a"];
+import { T } from "../tokens";
+
+const COLORS = T.chart;
 const DEFAULT_PICKS = ["United States", "China", "India", "Germany", "Brazil"];
 
 interface Props {

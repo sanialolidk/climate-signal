@@ -3,6 +3,7 @@ __pycache__/
 .DS_Store
 frontend/node_modules/
 frontend/dist/
+frontend/tsconfig.tsbuildinfo
 data/owid-co2-data.csv
 models/*.pkl
 !models/bundle.pkl

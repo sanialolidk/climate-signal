@@ -1,5 +1,5 @@
 :root {
-  --blue-900: #0b2d5c;
+  --blue-900: #162e51;
   --blue-800: #1a4480;
   --blue-100: #c8d9ed;
   --gray-900: #1b1b1b;
@@ -13,6 +13,8 @@
   --amber: #b35c00;
   --red: #b50909;
   font-family: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: "Source Code Pro", "Consolas", monospace;
   line-height: 1.5;
   color: var(--gray-900);
   background: var(--bg);
@@ -99,6 +101,7 @@ a {
 }
 
 .page-title {
+  font-family: var(--font-serif);
   font-size: 1.25rem;
   font-weight: 700;
   margin: 0 0 0.35rem;

@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import { api } from "../api/client";
+import { T } from "../tokens";
 import type { MetricsPayload } from "../types";
 
 export function ValidationPage() {
@@ -124,7 +125,7 @@ export function ValidationPage() {
                 <XAxis type="number" tick={{ fontSize: 11 }} />
                 <YAxis type="category" dataKey="feature" tick={{ fontSize: 10 }} width={95} />
                 <Tooltip />
-                <Bar dataKey="importance" fill="#1a4480" radius={[0, 3, 3, 0]} />
+                <Bar dataKey="importance" fill={T.navy} radius={[0, 3, 3, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -1,8 +1,10 @@
+import { T } from "../tokens";
+
 export function Header() {
   return (
     <>
-      <header className="site-header">
-        <h1>Climate Signal</h1>
+      <header className="site-header" style={{ borderBottomColor: T.navyDark }}>
+        <h1 style={{ fontFamily: T.fontSerif }}>Climate Signal</h1>
         <p>GHG Emissions Classification System — Country-Year Analysis Platform</p>
       </header>
       <div className="site-subnav">
